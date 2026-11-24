@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biblioteca Digital de Filosofía, Literatura y Humanidades</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,400;0,700;1,300&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .serif-title { font-family: 'Merriweather', serif; }
+        .library-hero {
+            background-image: linear-gradient(rgba(15, 23, 42, 0.88), rgba(15, 23, 42, 0.92)),
+                              url('https://images.unsplash.com/photo-1507842229433-f57007f59795?q=80&w=1920&auto=format&fit=crop');
+            background-size: cover;
+            background-position: center;
+        }
+    </style>
+</head>
+<body class="bg-stone-50 text-stone-800 min-h-screen flex flex-col justify-between">
+
+    <header class="library-hero text-stone-100 py-16 px-6 text-center shadow-lg border-b border-stone-800">
+        <div class="max-w-4xl mx-auto">
+            <span class="text-xs font-semibold tracking-widest uppercase bg-amber-600/30 text-amber-300 border border-amber-500/30 px-3 py-1.5 rounded-full inline-block mb-4">Repositorio Académico Personal</span>
+            <h1 class="serif-title text-4xl md:text-5xl font-bold mb-4">Biblioteca Digital de Humanidades</h1>
+            <p class="text-stone-300 text-lg max-w-2xl mx-auto mb-8">Diccionarios filosóficos, textos clásicos y obras esenciales listas para consulta y descarga.</p>
+            <div class="max-w-xl mx-auto relative">
+                <input type="text" id="searchInput" placeholder="Busca por autor (Aristóteles, Popper, Agustín...), título o categoría..."
+                    class="w-full bg-stone-900/80 text-stone-100 placeholder-stone-400 px-5 py-4 pl-12 rounded-xl border border-stone-700 focus:outline-none focus:border-amber-500 transition shadow-2xl backdrop-blur-sm">
+                <svg class="w-5 h-5 text-stone-400 absolute left-4 top-4.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-6 py-12 flex-grow w-full">
+        <div class="flex flex-wrap justify-between items-center gap-4 mb-8 border-b border-stone-200 pb-3">
+            <h2 class="serif-title text-2xl font-semibold text-stone-700">Catálogo de Obras</h2>
+            <div class="flex items-center gap-3">
+                <select id="catFilter" class="text-sm text-stone-700 bg-white px-3 py-1.5 rounded-lg border border-stone-200"></select>
+                <span id="counter" class="text-sm font-medium text-stone-700 bg-stone-200/80 px-3 py-1.5 rounded-lg"></span>
+            </div>
+        </div>
+        <div id="booksGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        <div id="noResults" class="hidden text-center py-16 text-stone-500">
+            <p class="text-lg">No se encontró ningún libro con ese término de búsqueda.</p>
+        </div>
+    </main>
+
+    <footer class="bg-stone-900 text-stone-400 py-8 px-6 text-center text-sm border-t border-stone-800">
+        <p>&copy; 2026 Biblioteca Digital. Recursos para la investigación y el estudio.</p>
+    </footer>
+
+    <script>
+        const CATS = {
+            D: ["Diccionario / Léxico", "Obra de consulta para el estudio de términos, conceptos y lenguas."],
+            G: ["Filosofía Antigua", "Texto fundamental de la filosofía griega para lectura y estudio."],
+            H: ["Historia de la Filosofía", "Obra de conjunto sobre épocas, escuelas y autores del pensamiento."],
+            M: ["Medieval y Teología", "Obra de la tradición medieval, patrística, escolástica o teológica."],
+            F: ["Filosofía Moderna y Contemporánea", "Obra de filosofía moderna, contemporánea o de la ciencia."],
+            A: ["Lenguas Clásicas", "Gramática o instrumento de estudio del griego y el latín."],
+            L: ["Literatura", "Obra literaria clásica, medieval o contemporánea."],
+            P: ["Psicología", "Obra de psicología, psicoterapia y salud mental."],
+            E: ["Ensayo y Ciencias Sociales", "Ensayo, teoría política, historia y ciencias sociales."],
+            X: ["Por identificar", "Archivo del Drive cuyo título completo no se pudo identificar."]
+        };
+
+        // [id de Drive, título, autor, categoría, descripción (opcional), formato (opcional)]
+        const raw = [
+            ["1J2jLyyqQxr-NyhL1MQaW7vPqLd8oCPsn","Diccionario de Filosofía","Walter Brugger (1969)","D","Obra sistemática que abarca desde la filosofía antigua y escolástica hasta el pensamiento contemporáneo."],
+            ["10i0QYpDEM61kuA044EuYjc_r9SMYiGb1","Diccionario de Filosofía (Tomo I)","José Ferrater Mora","D","Referencia monumental en español de conceptos, corrientes y filósofos."],
+            ["1l-VcL3nexBrz-dpxSBMnTQPT8onB5AeV","Diccionario Akal de Filosofía","Robert Audi (Ed. Akal / Cambridge)","D","Compendio con aportaciones clave en lógica, epistemología y filosofía de la ciencia."],
+            ["1BwJgcrb9XZxpSc-rD7eHIvfM0-g87wqm","Diccionario Filosófico","Voltaire","D","Clásico ilustrado con reflexiones críticas sobre religión, metafísica, moral y sociedad."],
+            ["17YG0bzKfH4KNWendwvq71WI74vP0eal6","Diccionario filosófico (Vol. 1)","Por identificar","D"],
+            ["1QIh3wMkTiwCv-arUmkh6foX315NGrHu1","Diccionario Vox Griego Clásico-Español","Vox","D"],
+            ["1xXML2J-82y7Br3QP9yRxYQa3uIKqobiI","Diccionario Sopena Griego-Español","F. I. Sebastián Yarza (dir.)","D"],
+            ["1fjaRlqGLPC2p5iKexM_7XmxblSU8ejja","Intermediate Greek Lexicon","Liddell y Scott","D"],
+            ["1nV5c-3wYBPm0_bLVyWWh_Z73OH5sr-Kk","Greek Philosophical Terms: A Historical Lexicon","F. E. Peters","D"],
+            ["1WQZA0sl7hC7c1t2tnckMdfK6KcrdWhH-","Etymological Dictionary of Greek","R. Beekes","D"],
+            ["1XVFATivOhrqBokEp6zgm5uW-kcz3hI1a","Dictionnaire étymologique de la langue grecque","Pierre Chantraine","D"],
+            ["1CxYJAsr5b7pBlJY-aqUoSzEUvfWcSptq","Etymological Dictionary of Latin","Michiel de Vaan","D"],
+            ["1rvbVzzVoXVh7d83EnNZadpW3JxqBtclp","Etimologías","Isidoro de Sevilla","D"],
+
+            ["1DdoIiq3LAec7oDIC_kXkDZWFYRhtzEBu","Discurso del Método","René Descartes","F","Tratado fundamental del racionalismo moderno sobre la duda metódica."],
+            ["1TYJE2BCj2-7HRzhE5MGv0l6XsVtizWzl","Meditaciones Metafísicas","René Descartes","F","Existencia de Dios, inmortalidad del alma y fundamentos del conocimiento."],
+            ["1UcGVP8Z_9SdWTVb0IswHM_LKDVHdOpgM","La Lógica de la Investigación Científica","Karl Popper","F","Obra central de la filosofía de la ciencia: criterio de falsabilidad."],
+            ["1q6ZP_t1Rc7xWj_5A7CLqg8ZVMWMA4WCk","Conjeturas y refutaciones","Karl Popper","F"],
+            ["1V8KnuRGscobblzmNQG_0t1kLVez-T3Fx","Los Principios de la Ciencia","Eduardo Nicol","F","Investigación fenomenológica e histórica sobre el fundamento del saber científico."],
+            ["1OFicJhHxxekbTI-nSfLuf52eMNegkPSr","Los Principios de la Ciencia (edición completa)","Eduardo Nicol","F"],
+            ["1YuzjKskxVF3T_wsvhPz2-aCd-Zn7hoB9","Los Principios de la Ciencia (edición ilide)","Eduardo Nicol","F"],
+            ["1eNGCJ8lVDHJAh_pjRVGqKZqxvILeTHnd","Ciencia y Técnica como «Ideología»","Jürgen Habermas","F","Ensayo sobre racionalidad instrumental y técnica moderna."],
+            ["1Wby7pjILlZfo-q16JCnETiQyHJjQArqs","Introducción a la Lógica","Raúl Gutiérrez Sáenz","F","Manual clásico de estudio formal del pensamiento y el raciocinio."],
+            ["1JpF5IveuQpqbA6gsPAaIg41m5Tq5Hr1J","Crítica de la Razón Pura (integral)","Immanuel Kant","F","","DOCX"],
+            ["1RWmpqgpweIUwxl2hflShm8R1DFmSgm6C","Metafísica","Eudaldo Forment","F"],
+            ["1U33HsRaYeNVhb8HljzIzvbiD1xnB_emL","Introducción a la metafísica","Jean Grondin","F"],
+            ["19uwL5OtNFzVl-AbfG_5wd8NzKvfgXUuY","Teoría del Conocimiento","Johannes Hessen","F"],
+            ["10L_I5Xw5pouAiVGos7a7hzB0zjxeZsC8","El principio de responsabilidad","Hans Jonas","F"],
+            ["1vnkszVvLzwOlK0eFq_oHPeVqMZT27Cgf","El puesto del hombre en el cosmos","Max Scheler","F"],
+            ["17IytONtPb8PWGlDGiZBOteCtQwhPkmim","El oficio del pensamiento (ensayos)","Julián Marías","F"],
+            ["1hg3mA0Oq7GAvQ3HzGYVY4C4v8TR2Bkv8","Invitación a la estética","Adolfo Sánchez Vázquez","F"],
+
+            ["1GmHYWI24567OtXksl8IGKz2YV98G8HDQ","Física","Aristóteles","G"],
+            ["1X9722CiCgtHGhDA3fV2bjzG1wUMrDCpF","Política (Gredos)","Aristóteles","G"],
+            ["149XKfLJPMk4NXWwIMaujOZfwHe-hiHbs","Política (bilingüe)","Aristóteles","G"],
+            ["1Nfog9_bdPVc2ot2A6Acq0ZRR4N0D9u8x","Metafísica (trilingüe)","Aristóteles","G"],
+            ["1c-7zAtYHE4njte5sXCCsbwJxvYkdwukA","Metafísica (Gredos)","Aristóteles","G"],
+            ["1qP--w5mnGlBKQO-GEhbN86lwfZHg-GNl","Ética a Nicómaco (bilingüe)","Aristóteles","G"],
+            ["121vwGE5ubPovpkq5hqBaQ3ZCLqGYNTxP","Ética a Nicómaco (Araujo y Marías)","Aristóteles","G"],
+            ["1n88KfAvbkoupVyBdL9hrPrYwCb4ABH1W","Sobre el mundo","Aristóteles","G"],
+            ["14ryv_FYYg_ZWEXUo3zlSl7hzn3vkPyL2","Index Aristotelicus","Hermann Bonitz","G"],
+            ["1divlhKFo-tGUkXbbXj-O2x8KyVbxiz1U","Index Aristotelicus (ed. 2)","Hermann Bonitz","G"],
+            ["1ZsySQ4_6E2upLmSjq5iTtwiHtgNhbzWX","Diálogos IV: República","Platón","G"],
+            ["1yyBSjSK1MZdvK3KkqWkxn_7MFndTdVbB","Diálogos V: Parménides, Teeteto, Sofista, Político","Platón","G"],
+            ["1S-p92P9kDzzUeIFljGQPhGc1aRXmQMF3","Diálogos VI: Filebo, Timeo, Critias","Platón","G"],
+            ["141WsJPbMjahlLh77o7Gk4fZ--FvLfcDP","Teeteto (bilingüe)","Platón","G"],
+            ["1GmX-AlHNd4VhH_vhbUCoVgZteNkYe_rn","Opera, Vol. I: Euthyphro, Apologia, Crito...","Platón (Oxford)","G"],
+            ["1O7CAm1QGTpQnYnNnBCKdRKTbwExrTq06","Eutifrón y Apología","Platón","G"],
+
+            ["1ObgILrvIF3QJ45KmxKRFDTG5mXJIozi-","Historia de la Filosofía 1","Guillermo Fraile","H"],
+            ["1BkbOjnQySjQGuCf_q9oAdCtddk1H_K88","Historia de la Filosofía 2","Guillermo Fraile","H"],
+            ["1WaEHbw7_fkZGlWhEk24gU6mdU8qJ6e79","Historia de la Filosofía 3","Guillermo Fraile","H"],
+            ["1_D5XTR-vDji0eduyZJDJzmzGZy9fRmzQ","Historia de la Filosofía 4","Guillermo Fraile","H"],
+            ["1-Y2BqIab0skMCee3gJurwJjbEIM4kTfB","Historia de la Filosofía 5","Guillermo Fraile","H"],
+            ["1Cnak-qI7we4KddE7jKD7gjJfgksetkhq","Historia de la Filosofía 6","Guillermo Fraile","H"],
+            ["1Ly3q8-blT41ZkLyvlICauTLf5_XT3cU1","Historia de la Filosofía 7","Guillermo Fraile","H"],
+            ["1DzRCVAXr7ur0BeOHN40gkjfnmMo5WybR","Historia de la Filosofía 8","Guillermo Fraile","H"],
+            ["1avdDpIqdJMwSCwjJYSIoBddDMSj6Wz11","Esquemas de Historia de la Filosofía","Varios autores","H","Síntesis de las principales épocas, escuelas y autores."],
+            ["1pMGSsvn_pqL8ebwWU3IWVrO3QKdgLoS0","Historia de la filosofía 1: Filosofía pagana antigua","Reale y Antiseri","H"],
+            ["1mZ0d_-ybxSQsq_QMXIUABpRGeBZklhrU","Historia del pensamiento filosófico y científico, tomo 1","Reale y Antiseri","H"],
+            ["1KVrjU2IkHVsw3IVHec3Lm1PPpvktDb43","La Sabiduría Antigua","Giovanni Reale","H"],
+            ["1w8omKa2lkVfHxUSG1dRkUt7KTTXSECxx","Los filósofos griegos","W. K. C. Guthrie","H"],
+            ["16EDf0Rmnx3jlk__kcS5g5YfdMPq8YdkD","Aristóteles: bases para la historia de su desarrollo intelectual","Werner Jaeger","H"],
+            ["1lhXBL7-sJL4I1V3DcEBa6PSCG8yx62yZ","Die Philosophie der Griechen","Eduard Zeller","H"],
+            ["1LKJjU6hXSBngHX12vPHTBSJo4J49sv34","Las fuentes del pensamiento europeo","Bruno Snell","H"],
+            ["1dmAsN8uTamAXlXmyuEZ0x9dKNOyTMP4p","Historia de la filosofía española","Alain Guy","H"],
+            ["1TucsyTWcaTjnZitEzhoMaG4EsYHciTNk","Mujeres filósofas en la historia","Ingeborg Gleichauf","H"],
+
+            ["1Jg2X2I8lZ10sSXIuglKVXVH8qIgnNebG","De Ente et Essentia (Sobre el ente y la esencia)","Santo Tomás de Aquino","M","Opúsculo metafísico sobre ser, esencia y existencia."],
+            ["1uEtgMbhRcTY4vx6qTtcnbNja243dRCvN","El ente y la esencia (trad. Fuentes Benot)","Santo Tomás de Aquino","M"],
+            ["1-FPrW0JhxdUryrb6CKhWpes7G8MFgbnT","Los principios de la naturaleza","Santo Tomás de Aquino","M"],
+            ["1MU0OPso4A8P1C7SVEGysWuiAJR3O3vPK","El Bien","Santo Tomás de Aquino","M"],
+            ["1gRdXvPT6lFH9KOcsC6mNXDRnBWJ_H_I6","Cuestiones disputadas sobre el mal (EUNSA, 2015)","Santo Tomás de Aquino","M"],
+            ["1pE7TpdguqJyHirb76MC47jYi_nSSggj_","Suma Teológica","Santo Tomás de Aquino","M"],
+            ["171lljAbuLpDxrwr2Z6QjDYQ-mvt-g6sg","Parte I-II (vol. 2)","Por identificar","M"],
+            ["1kQ5SAkiUbdF2dEkSImVYbcQ9fA9meJ_e","Física de Escoto","Escoto","M"],
+            ["1SoVLzj0EkLBIT7twZg17JoiDe0IBSNWJ","La filosofía medieval desde sus orígenes","Josep-Ignasi Saranyana","M"],
+            ["1yOQ-C-l5i-IFZrLB6KbSFQBC0LMNRWI5","Confesiones","San Agustín","M"],
+            ["1qEdwW1PTBz24xTxHcIdGYf8dWUogikuj","Confesiones (ed. 2)","San Agustín","M"],
+            ["1enb_kFNuERfeWC9iWqI6uoaltR9_ihXG","Confesiones (ed. 3)","San Agustín","M"],
+            ["1by2ctwiXmKTJgO7Lr14gOuuUYUHlRtuj","Obras 01: Introducción y primeros escritos (BAC)","San Agustín","M"],
+            ["1vi5mgORENubkZV29sO7LG8xmPXxdj_XO","Obras 03: Obras filosóficas (BAC)","San Agustín","M"],
+            ["16ZQM-ytm34hHBTb33SeqAHfKhDaNhgs0","Obras 39: Escritos varios 01 (BAC)","San Agustín","M"],
+            ["1sgxIPXBDYhtRUoJqXrEDSpemfFitorbG","Obras 40: Escritos varios 02 (BAC)","San Agustín","M"],
+            ["1OhsJD8YMeNbbXEno1482oAl8cbdpc4ed","La Ciudad de Dios","San Agustín","M","","EPUB"],
+            ["1z5Wzh0NJ7bOxlk4LPReOKFP6gDTgsbbd","La consolación de la filosofía (Akal)","Boecio","M"],
+            ["143mLPGxgETavga0sDhTE-t9ObffWOpUc","La consolación de la filosofía (U. de Puerto Rico, 2003)","Boecio","M"],
+            ["1HVR9bYBrNg3dpvELXQ8Yh5kwPXs1VV5K","Vida y obras completas (BAC, 1960)","San Juan de la Cruz","M"],
+            ["146iDc4KJLTtrl0TZueoUV999z8Z3ZdnY","Averroes' Middle Commentary on Aristotle's Metaphysics","M. Aouad y S. Di Vincenzo (eds.)","M"],
+            ["1VM3MA0vrg27pu0zdP3k7kbGYYo1-SXU_","Philosophical Terminology in Arabic and Persian","Soheil M. Afnan","M"],
+            ["1oAdOpwniWbUJTDG4Z3Z6Z8jG-mvq3OCm","Words, Texts, and Concepts Cruising the Mediterranean Sea","G. Endress, R. Arnzen y J. Thielmann (eds.)","M"],
+            ["1XDwLWEtgZZrFwITXRgBAZCcnxeSMCp-a","Dios existe","Joseph Ratzinger","M"],
+            ["1IKAE2baLZisSf9HFERMIOfPN-ufGUGm7","La agonía del cristianismo","Miguel de Unamuno","M"],
+            ["1MfMtXABEX7ZkNR9RCGFOG2EtcixRbS5_","Santa Biblia de Jerusalén","Varios autores","M"],
+            ["1K_9y7shdu3fmC7nMSQ_dEeBCQIqcoXhM","Antiguo Testamento interlineal hebreo-español: Pentateuco","Varios autores","M"],
+            ["1HAMJS1geXvLB9ofMFjAhr4KXnUszCGTO","Rosario de la Aurora (versión digital en español)","Por identificar","M"],
+            ["1Ob-YSldgjiD31YIl7jVI-HHVWeFngnuw","Sacerdocio y burnout","Helena López de Mezerville","M"],
+            ["1uKr4QGq5YFj2bBuGTngxNyiECBFvQJir","Sexo, sacerdocio e Iglesia","Len Sperry","M"],
+            ["13yhCyQXQ6q8pQfrzBr21Q-7bTixgZXY6","Encontrándonos con el Beato Carlo Acutis","Por identificar","M"],
+
+            ["1AO9zS6SFlqUjF6shxggEUkHb_vAbQj7O","Gramática Latina","Goñi y Echeverría","A","Morfología y sintaxis para estudiar y traducir latín clásico."],
+            ["16PSx_mfDgWO3cVc1BUS2noRaM-xmh0ye","A Greek Grammar for Colleges","H. W. Smyth","A"],
+            ["1sElJdJ5Cuj8fIad74gh5uUvw_TRgcKyP","Grammaire homérique (vol. 2)","Pierre Chantraine","A"],
+            ["1z35OwIAPd2FYAEQhP5g05p6nB0dEcSQW","Scribes and Scholars","L. D. Reynolds y N. G. Wilson","A"],
+
+            ["1dE4V99Q1HcQ5csS3ULKtfewfTXebHHYa","Poema de Gilgamesh","Anónimo (Mesopotamia)","L","Epopeya más antigua conocida sobre la búsqueda de la inmortalidad."],
+            ["1_4Gb-Z5xDEEIFK4OliEkNi-qV3zEvUR6","Libro de Buen Amor (original y adaptado)","Juan Ruiz, Arcipreste de Hita","L","Mester de clerecía con texto original y adaptación moderna."],
+            ["1C2WCfyYZQdWJP9gJvf9mg0oxT1sNEQr3","Cuentos de Canterbury","Geoffrey Chaucer","L","Relatos de peregrinos en la Inglaterra medieval."],
+            ["1yrv-fvzXWj3k2QEyBZkIdb2ESJ4Mm-yf","Canterbury (ed. 2)","Geoffrey Chaucer","L"],
+            ["1fYsG-TSpCo8P-eFudKxrIx_CmldgHo97","La Ilusión Cómica","Pierre Corneille","L","Comedia barroca sobre la frontera entre realidad y ficción."],
+            ["1H8aWrQRLDj2h5m477uwccUuZ_tG5mWGJ","El Escarabajo de Oro","Edgar Allan Poe","L","Cuento de misterio, criptografía y deducción lógica."],
+            ["1jL7rWvt8qr_X9E1h0Fuy5nuG212AVJM8","Cuentos completos","Edgar Allan Poe","L"],
+            ["1S-gtlpYeYCJC6C4mldZiwVNnkDcl98n9","La Metamorfosis","Franz Kafka","L","Relato emblemático sobre alienación e identidad."],
+            ["1Uhxy7TdRfb9xOVVNWbo3Kitp1I8fLjA1","La Metamorfosis (ed. 2)","Franz Kafka","L"],
+            ["1uIvyYq2yDTZCxuaWvpMpOF5n6afbH-E1","Frankenstein","Mary Shelley","L"],
+            ["1hAlAtw8ry9uyX6iAWJS17-BDobGMBMNJ","Frankenstein o el moderno Prometeo","Mary Shelley","L"],
+            ["1CIV07PuZzHHLihBAVlq4ZKcY51RGsb14","Dafnis y Cloe / Leucipa y Clitofonte / Babiloníacas","Longo, Aquiles Tacio y Jámblico","L"],
+            ["13Gd_gVQbY6bhJDjxPVuMH0MjFY1MViuT","Las metamorfosis","Ovidio","L"],
+            ["1-CxEFUxxAmZRt_45mTUDvGA1VafM2Pju","Metamorfosis (bilingüe)","Ovidio","L"],
+            ["1ckml-4ZkCyknutflGahPacFwbQ-uHnh9","El Paraíso perdido","John Milton","L"],
+            ["19e-RrYJvmjN1Ml_o1GVPpsbyQvYwZDTK","Cuentos de Mamá Ganso","Charles Perrault","L"],
+            ["1G_gQEPNnnfl7bNbAjg40-y7DROvpwxE_","Libro de las maravillas del mundo","Juan de Mandeville","L"],
+            ["1umKz0fZQvVP85SE2iuwLXnsg6CbYnWYx","Libro de las maravillas del mundo (ed. Rodríguez Temperley)","Juan de Mandeville","L"],
+            ["1-cU57hKrLH0--41smlsYrh_QQfR09T1z","50 Obras Maestras que debes leer antes de morir, Vol. 1","Varios autores","L"],
+            ["1byu0fb3jafl2A6UkasDb_2H8BmvqnJkt","50 Obras Maestras que debes leer antes de morir, Vol. 1","Varios autores","L","","EPUB"],
+            ["1SbY_o4pmtqrIEReey1ZCVscHliphqDyF","El recurso del método","Alejo Carpentier","L","","EPUB"],
+            ["14llxoOv6yRTfvkZZbvCkBV3vBXVBaxY-","Kaiki","Atsushi Nakajima","L"],
+
+            ["1kyi6awU7S4l8IMwtzVcla9IJvi7uyVVE","El Mexicano: Psicología de sus Motivaciones","Santiago Ramírez","P","Estudio clásico sobre identidad y raíces psicológicas en México."],
+            ["1kaY03HlgfEiSWieviz3RTjNA7hLsbgNC","Los Seis Pilares de la Autoestima","Nathaniel Branden","P","Desarrollo de la eficacia personal y el respeto hacia uno mismo."],
+            ["1iP6_d3V8Z_Dp4cLtkKwNA2jBnO7d20AR","Obras completas, vol. 10 (Amorrortu)","Sigmund Freud","P"],
+            ["14kYTzZtLRLSd7G1OSMrZb1PS1Z_NbyPv","El descubrimiento del inconsciente","Henri F. Ellenberger","P"],
+            ["1GtbA4lpVldd8f91bwSrYmwX-SSg57kfG","Aproximaciones a la psicoterapia","Por identificar","P"],
+            ["1SUgDRJSPxx68TmD3MZXaYMWQPkFHv0ob","Ingenuos: el engaño de las terapias alternativas","Vicente Caballo e Isabel Salazar","P"],
+            ["1PRWsNWKmZudkEaHFnozFKzvGC6NAuXox","Breviario DSM-V","Por identificar","P"],
+
+            ["1SKludc-rGOXUnJSkwS4j5N8gm5PrOi41","La cultura del narcisismo","Christopher Lasch","E"],
+            ["1N0BytXXzg-4D1fq5pAV2QdS_izL6bMPj","Poliarquía: participación y oposición","Robert Dahl","E"],
+            ["1LQUeR5gy3Ui_U9pAFYPBxvzUA9pCnBE2","El cisne negro","Nassim Nicholas Taleb","E"],
+            ["1XIoN9nhmU26fPMvxrP49565hOARD101s","La España del Siglo de Oro","Por identificar","E"],
+
+            ["1p4fWBZLf5fOtr2PNnliT5lUboGNZQKKd","ETIMOL~1 (título incompleto)","Por identificar","X"],
+            ["1FLvu1dxM3V262blGsDE-0A2rq5fNLABZ","ETIMOL~2 (título incompleto)","Por identificar","X"],
+            ["18IadNvTB-ZDY8WqQWE0Zy56zkdCoyCxl","DICTIO~1 (título incompleto)","Por identificar","X"],
+            ["1BkPyCNfoQs1LIoIFVtI34jyTLqaoFr6E","_VOCAB~1 (título incompleto)","Por identificar","X"],
+            ["1n44lFB2O5BOyHQq6amwbu8aYGLy5YbXj","METZLE~2 (título incompleto)","Por identificar","X"],
+            ["12x7QqoRsKF8fKXo6Tuxma44JiWWvuhaU","PHILOS~1 (título incompleto)","Por identificar","X"],
+            ["1ypYuQkAf16ODJC-8MENznj9nlNSIpTma","INICIA~1 (título incompleto)","Por identificar","X"],
+            ["1AFcDhYxz10Aj-m85HVr1tsQ-jJJKRtpZ","REALLE~1 (título incompleto)","Por identificar","X"],
+            ["1FaTGNKePrmgBYorNZYaQSiSTTxwZFGtn","THEGRE~1 (título incompleto)","Por identificar","X"],
+            ["1KtqcHwF4U4KgDCNQS84vQD1jrAAOeY_w","AT1 (copia)","Por identificar","X"],
+            ["1ePR6f7_Z5vvcrlaOGWYKRQ61yIFMtOSF","GILESY-2v1 (copia)","Por identificar","X"]
+        ];
+
+        // Quitar duplicados exactos por id y los registros repetidos del bloque "X" ya listados arriba como diccionarios
+        const seen = new Set();
+        const books = [];
+        raw.forEach(r => {
+            if (seen.has(r[0])) return;
+            seen.add(r[0]);
+            books.push({ id: books.length + 1, drive: r[0], title: r[1], author: r[2], cat: r[3],
+                         desc: r[4] || CATS[r[3]][1], fmt: r[5] || "PDF" });
+        });
+
+        const grid = document.getElementById('booksGrid');
+        const searchInput = document.getElementById('searchInput');
+        const catFilter = document.getElementById('catFilter');
+        const noResults = document.getElementById('noResults');
+        const counter = document.getElementById('counter');
+
+        catFilter.innerHTML = '<option value="">Todas las categorías</option>' +
+            Object.entries(CATS).map(([k, v]) => `<option value="${k}">${v[0]}</option>`).join('');
+
+        function render(list) {
+            counter.innerText = `Mostrando ${list.length} de ${books.length} obras`;
+            noResults.classList.toggle('hidden', list.length > 0);
+            grid.innerHTML = list.map(b => `
+                <div class="bg-white rounded-xl shadow-xs border border-stone-200 hover:border-amber-400 p-6 flex flex-col justify-between transition-all duration-200">
+                    <div>
+                        <div class="flex justify-between items-center mb-3">
+                            <span class="text-xs font-semibold uppercase tracking-wider text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200/50">${CATS[b.cat][0]}</span>
+                            <span class="text-xs font-bold text-stone-400">#${b.id}</span>
+                        </div>
+                        <h3 class="serif-title text-xl font-bold mb-2 text-stone-900 leading-snug">${b.title}</h3>
+                        <p class="text-sm font-medium text-stone-600 mb-3">${b.author}</p>
+                        <p class="text-stone-600 text-sm leading-relaxed mb-6">${b.desc}</p>
+                    </div>
+                    <a href="https://drive.google.com/file/d/${b.drive}/view?usp=drivesdk" target="_blank" rel="noopener"
+                       class="bg-stone-900 hover:bg-stone-800 text-white font-medium py-2.5 px-4 rounded-lg text-center transition flex items-center justify-center gap-2 text-sm shadow-sm">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                        Descargar ${b.fmt}
+                    </a>
+                </div>`).join('');
+        }
+
+        function filterBooks() {
+            const term = searchInput.value.toLowerCase().trim();
+            const cat = catFilter.value;
+            render(books.filter(b =>
+                (!cat || b.cat === cat) &&
+                `${b.title} ${b.author} ${CATS[b.cat][0]} ${b.desc} #${b.id}`.toLowerCase().includes(term)));
+        }
+
+        render(books);
+        searchInput.addEventListener('input', filterBooks);
+        catFilter.addEventListener('change', filterBooks);
+    </script>
+</body>
+</html>
